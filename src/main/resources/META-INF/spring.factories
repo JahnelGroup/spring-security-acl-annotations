@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.jahnelgroup.springframework.security.acl.AclAnnotationsAutoConfiguration
