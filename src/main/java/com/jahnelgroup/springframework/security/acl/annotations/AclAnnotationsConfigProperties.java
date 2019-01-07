@@ -1,4 +1,4 @@
-package com.jahnelgroup.springframework.security.acl;
+package com.jahnelgroup.springframework.security.acl.annotations;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

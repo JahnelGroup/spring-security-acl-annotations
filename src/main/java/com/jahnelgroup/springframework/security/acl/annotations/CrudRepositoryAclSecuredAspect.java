@@ -1,21 +1,23 @@
-package com.jahnelgroup.springframework.security.acl;
+package com.jahnelgroup.springframework.security.acl.annotations;
 
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.acls.domain.PermissionFactory;
 import org.springframework.security.acls.model.MutableAclService;
 
 import java.util.Iterator;
 
+@Aspect
 public class CrudRepositoryAclSecuredAspect extends AbstractAclSecuredAspect {
 
     private Logger logger = LoggerFactory.getLogger(CrudRepositoryAclSecuredAspect.class);
 
     public CrudRepositoryAclSecuredAspect(MutableAclService aclService,
-                                    AclAnnotationsConfigProperties properties) {
-        super(aclService, properties);
+            SidProvider sidProvider,
+            AclAnnotationsConfigProperties properties) {
+        super(aclService, sidProvider, properties);
         logger.info("CrudRepositoryAclSecuredAspect registered");
     }
 

@@ -1,13 +1,10 @@
-package com.jahnelgroup.springframework.security.acl;
+package com.jahnelgroup.springframework.security.acl.annotations;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.acls.domain.PermissionFactory;
 import org.springframework.security.acls.model.MutableAclService;
 
 /**
@@ -26,19 +23,22 @@ public class AclAnnotationsAutoConfiguration {
 
         private MutableAclService aclService;
 //        private PermissionFactory permissionFactory;
+//        private SidProvider sidProvider;
         private final AclAnnotationsConfigProperties properties;
 
         public AclAnnotationsConfig(MutableAclService aclService,
                 //PermissionFactory permissionFactory,
+//                                    SidProvider sidProvider,
                 AclAnnotationsConfigProperties properties){
             this.aclService = aclService;
+//            this.sidProvider = sidProvider;
 //            this.permissionFactory = permissionFactory;
             this.properties = properties;
         }
 
         @Bean
         public CrudRepositoryAclSecuredAspect aclSecuredAspect(){
-            return new CrudRepositoryAclSecuredAspect(aclService, properties);
+            return new CrudRepositoryAclSecuredAspect(aclService, null, properties);
         }
 
     }
