@@ -8,6 +8,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.FIELD})
 public @interface Ace {
-    boolean granting() default true;
     String[] permissions() default {};
+    boolean granting() default true;
+    AclSid sid() default @AclSid();
 }
+

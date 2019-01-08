@@ -38,7 +38,7 @@ public class AclAnnotationsAutoConfiguration {
 
         @Bean
         public CrudRepositoryAclSecuredAspect aclSecuredAspect(){
-            return new CrudRepositoryAclSecuredAspect(aclService, null, properties);
+            return new CrudRepositoryAclSecuredAspect(aclService, properties);
         }
 
     }
