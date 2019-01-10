@@ -1,5 +1,6 @@
-package com.jahnelgroup.springframework.security.acl.annotations;
+package com.jahnelgroup.springframework.security.acl.annotations.config;
 
+import com.jahnelgroup.springframework.security.acl.annotations.aspect.CrudRepositoryAclSecuredAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

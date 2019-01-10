@@ -1,6 +1,6 @@
-package com.jahnelgroup.springframework.security.acl.annotations;
+package com.jahnelgroup.springframework.security.acl.annotations.aspect;
 
-class Tuple<X, Y> {
+public class Tuple<X, Y> {
     public final X annotation;
     public final Y field;
     public Tuple(X annotation, Y field) {

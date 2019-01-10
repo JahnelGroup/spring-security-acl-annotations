@@ -1,6 +1,6 @@
-package com.jahnelgroup.springframework.security.acl.annotations;
+package com.jahnelgroup.springframework.security.acl.annotations.aspect;
 
-import com.jahnelgroup.springframework.security.acl.annotations.sid.SidProvider;
+import com.jahnelgroup.springframework.security.acl.annotations.config.AclAnnotationsConfigProperties;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.After;
 import org.aspectj.lang.annotation.Aspect;

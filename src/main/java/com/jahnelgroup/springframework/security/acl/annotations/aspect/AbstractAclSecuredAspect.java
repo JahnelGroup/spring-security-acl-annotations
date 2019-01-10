@@ -1,19 +1,19 @@
-package com.jahnelgroup.springframework.security.acl.annotations;
+package com.jahnelgroup.springframework.security.acl.annotations.aspect;
 
+import com.jahnelgroup.springframework.security.acl.annotations.Ace;
+import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
+import com.jahnelgroup.springframework.security.acl.annotations.config.AclAnnotationsConfigProperties;
 import com.jahnelgroup.springframework.security.acl.annotations.sid.DefaultSidProvider;
 import com.jahnelgroup.springframework.security.acl.annotations.sid.SidProvider;
 import org.aspectj.lang.JoinPoint;
-import org.springframework.core.ResolvableType;
 import org.springframework.security.acls.domain.*;
 import org.springframework.security.acls.model.*;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.util.ReflectionUtils;
 
 import javax.transaction.Transactional;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.stream.Collectors;
 
 abstract class AbstractAclSecuredAspect {
 
@@ -51,6 +51,10 @@ abstract class AbstractAclSecuredAspect {
             acl = aclService.createAcl(oi);
         }
 
+        // Delete all current entries
+        int size = acl.getEntries().size();
+        for(int i=0; i<size; i++) acl.deleteAce(0);
+
         //
         // Access Control Entries (ACE's)
         //
@@ -65,8 +69,6 @@ abstract class AbstractAclSecuredAspect {
                                 ace.annotation.granting());
                     }
                 }
-
-
             }
         }
 
@@ -127,68 +129,11 @@ abstract class AbstractAclSecuredAspect {
         return aces;
     }
 
-    private List<Sid> getSid(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
+    // TODO: Cache
+    protected List<Sid> getSid(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
         return sidProvider.mapToSids(ace.annotation, ace.field, saved);
     }
 
-//    private List<Sid> getSid(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
-//        Tuple<AclSid, List<Object>> sids = getSidValue(ace, saved);
-//        return sids.field.stream().map(sid -> sids.annotation.principal() ? new PrincipalSid(sid.toString()) :
-//                new GrantedAuthoritySid(new SimpleGrantedAuthority((sid.toString())))).collect(Collectors.toList());
-//    }
-//
-//    private Tuple<AclSid, List<Object>> getSidValue(Tuple<Ace, Field> aceTuple, Object saved) throws IllegalAccessException {
-//        Ace ace = aceTuple.annotation;
-//        Object aceFieldValue = aceTuple.field.get(saved);
-//
-//        // assuming the sid is the field itself ...
-//        if( aceFieldValue instanceof String || aceFieldValue instanceof Character || aceFieldValue instanceof Number ){
-//            throw new UnsupportedOperationException("AclSid cannot be a String, Character or Number yet.");
-////            List<Object> sidValues = new ArrayList<>();
-////            sidValues.add(aceFieldValue);
-////            return new Tuple<>(null, sidValues); // TODO.... No @Sid in this case
-//
-//        }
-//
-//        // Array
-//        else if( ResolvableType.forField(aceTuple.field).isArray() ){
-//            throw new UnsupportedOperationException("AclSid cannot be an array[] yet.");
-//        }
-//
-//        // Iterable
-//        else if (ResolvableType.forField(aceTuple.field).isInstance(Iterable.class)){
-//            if(ResolvableType.forField(aceTuple.field).hasGenerics()){
-//
-//            }
-//        }
-//
-//        // otherwise this is a custom class, go search for the sid
-//        else{
-//            List<Object> sidValues = new ArrayList<>();
-//            List<Field> fields = getAllFields(new LinkedList<>(), aceFieldValue.getClass());
-//            for(Field field : fields){
-//                AclSid sid = field.getAnnotation(AclSid.class);
-//                if( sid != null ){
-//                    ReflectionUtils.makeAccessible(field);
-//                    Object sidFieldValue = field.get(aceFieldValue);
-//
-//                    sidValues.stream().forEach(s ->{
-//                        if(!(s instanceof Serializable)){
-//                            throw new RuntimeException(String.format("Field %s for class %s must be Serializable",
-//                                    field.getName(), aceFieldValue.getClass().getCanonicalName()));
-//                        }
-//                    });
-//
-//                    return new Tuple<>(sid, sidValues);
-//                }
-//            }
-//        }
-//
-//        throw new RuntimeException(String.format("Unable to derive sid for field %s on class %s",
-//                aceTuple.field.getName(), saved.getClass().getCanonicalName()));
-//    }
-
-    // TODO: Cache
     private Permission getPermission(String perm){
         return permissionFactory.buildFromName(perm.toUpperCase());
     }
@@ -199,7 +144,6 @@ abstract class AbstractAclSecuredAspect {
         if (type.getSuperclass() != null) {
             getAllFields(fields, type.getSuperclass());
         }
-
         return fields;
     }
 

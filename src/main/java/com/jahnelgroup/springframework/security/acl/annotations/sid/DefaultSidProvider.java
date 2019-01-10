@@ -2,7 +2,7 @@ package com.jahnelgroup.springframework.security.acl.annotations.sid;
 
 import com.jahnelgroup.springframework.security.acl.annotations.Ace;
 import com.jahnelgroup.springframework.security.acl.annotations.AclSid;
-import com.jahnelgroup.springframework.security.acl.annotations.ReflectionHelper;
+import com.jahnelgroup.springframework.security.acl.annotations.aspect.ReflectionHelper;
 import org.springframework.core.ResolvableType;
 import org.springframework.security.acls.domain.GrantedAuthoritySid;
 import org.springframework.security.acls.domain.PrincipalSid;
@@ -29,11 +29,9 @@ public class DefaultSidProvider implements SidProvider{
         if (ResolvableType.forField(field).asCollection() != ResolvableType.NONE){
             Collection collection = (Collection) value;
 
-            // what to do in this case?
+            // nothing to map
             if( collection.isEmpty() ){
                 return new LinkedList<>();
-//                throw new RuntimeException(String.format("Unable to map sids from empty iterable %s on class %s",
-//                        field.getName(), object.getClass().getCanonicalName()));
             }
 
             Object o = collection.iterator().next();
@@ -51,10 +49,10 @@ public class DefaultSidProvider implements SidProvider{
         // Array
         else if( ResolvableType.forField(field).isArray() ){
             Object[] arr = (Object[]) object;
+
+            // nothing to map
             if( arr == null || arr.length == 0 )
                 return new LinkedList<>();
-//                throw new RuntimeException(String.format("Unable to map sids from empty array %s on class %s",
-//                        field.getName(), object.getClass().getCanonicalName()));
 
             List<Field> fields = ReflectionHelper.getAllFields(new LinkedList<>(), arr[0].getClass());
             for(Field f : fields){

@@ -1,4 +1,4 @@
-package com.jahnelgroup.springframework.security.acl.annotations;
+package com.jahnelgroup.springframework.security.acl.annotations.aspect;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
