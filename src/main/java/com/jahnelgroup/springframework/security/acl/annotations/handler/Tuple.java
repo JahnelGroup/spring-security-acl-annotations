@@ -1,4 +1,4 @@
-package com.jahnelgroup.springframework.security.acl.annotations.aspect;
+package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
 public class Tuple<X, Y> {
     public final X annotation;

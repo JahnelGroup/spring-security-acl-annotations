@@ -2,7 +2,7 @@ package com.jahnelgroup.springframework.security.acl.annotations.sid;
 
 import com.jahnelgroup.springframework.security.acl.annotations.Ace;
 import com.jahnelgroup.springframework.security.acl.annotations.AclSid;
-import com.jahnelgroup.springframework.security.acl.annotations.aspect.ReflectionHelper;
+import com.jahnelgroup.springframework.security.acl.annotations.handler.ReflectionHelper;
 import org.springframework.core.ResolvableType;
 import org.springframework.security.acls.domain.GrantedAuthoritySid;
 import org.springframework.security.acls.domain.PrincipalSid;
