@@ -2,8 +2,11 @@ package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
 import com.jahnelgroup.springframework.security.acl.annotations.Ace;
 import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
+import com.jahnelgroup.springframework.security.acl.annotations.AclParent;
 import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
 import com.jahnelgroup.springframework.security.acl.annotations.config.AclSecuredConfiguration;
+import com.jahnelgroup.springframework.security.acl.annotations.parent.DefaultParentProvider;
+import com.jahnelgroup.springframework.security.acl.annotations.parent.ParentProvider;
 import com.jahnelgroup.springframework.security.acl.annotations.sid.DefaultSidProvider;
 import com.jahnelgroup.springframework.security.acl.annotations.sid.SidProvider;
 import org.slf4j.Logger;
@@ -28,6 +31,8 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     protected Map<Class, List<Tuple<Ace, Field>>> aceMap = new HashMap<>();
 
     private SidProvider sidProvider = new DefaultSidProvider();
+    private ParentProvider parentProvider = new DefaultParentProvider();
+
     private PermissionFactory permissionFactory = new DefaultPermissionFactory();
     private Optional<MutableAclService> aclService;
 
@@ -94,6 +99,14 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
                 // Delete all current entries
                 int size = acl.getEntries().size();
                 for(int i=0; i<size; i++) acl.deleteAce(0);
+
+                // Set parent if it exists
+                Tuple<Class, Serializable> parentAcl = parentProvider.getParentObjectIdentity(saved);
+                if( parentAcl != null ){
+                    ObjectIdentityImpl poi = new ObjectIdentityImpl(parentAcl.annotation, parentAcl.field);
+                    acl.setParent(aclService.readAclById(poi));
+                    acl.setEntriesInheriting(true);
+                }
 
                 //
                 // Access Control Entries (ACE's)

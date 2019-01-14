@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.FIELD})
+@Target({ElementType.FIELD})
 public @interface Ace {
     String[] permissions() default {};
     boolean granting() default true;
