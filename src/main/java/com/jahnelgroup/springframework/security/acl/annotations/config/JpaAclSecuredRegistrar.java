@@ -22,7 +22,7 @@ import java.lang.annotation.Annotation;
 import static com.jahnelgroup.springframework.security.acl.annotations.data.jpa.domain.support.AclSecuredBeanFactoryPostProcessor.BEAN_CONFIGURER_ASPECT_BEAN_NAME;
 
 /**
- * {@link ImportBeanDefinitionRegistrar} to enable {@link EnableAclSecured} annotation.
+ * {@link ImportBeanDefinitionRegistrar} to enable {@link EnableAclSecured} first.
  *
  * Derived and inspired by {@link org.springframework.data.jpa.repository.config.JpaAuditingRegistrar}
  *

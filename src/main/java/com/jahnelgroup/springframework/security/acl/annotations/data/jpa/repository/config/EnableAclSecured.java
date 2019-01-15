@@ -10,7 +10,7 @@ import org.springframework.security.acls.model.AclService;
 import java.lang.annotation.*;
 
 /**
- * Enable Spring ACL annotation process with JPA entity managed beans.
+ * Enable Spring ACL first process with JPA entity managed beans.
  *
  * Derived and inspired by {@link org.springframework.data.jpa.repository.config.EnableJpaAuditing}
  */

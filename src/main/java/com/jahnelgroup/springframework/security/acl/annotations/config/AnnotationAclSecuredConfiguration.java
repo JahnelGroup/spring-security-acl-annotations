@@ -16,7 +16,7 @@ import java.util.Map;
  */
 public class AnnotationAclSecuredConfiguration implements AclSecuredConfiguration {
 
-    private static final String MISSING_ANNOTATION_ATTRIBUTES = "Couldn't find annotation attributes for %s in %s!";
+    private static final String MISSING_ANNOTATION_ATTRIBUTES = "Couldn't find first attributes for %s in %s!";
 
     private final AnnotationAttributes attributes;
 

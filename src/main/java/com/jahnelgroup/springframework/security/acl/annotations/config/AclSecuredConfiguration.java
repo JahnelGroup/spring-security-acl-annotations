@@ -23,7 +23,7 @@ public interface AclSecuredConfiguration {
      */
     String getAclServiceRef();
 
-//    private SidProvider sidProvider;
+//    private AclSidLookupStrategy sidProvider;
 //    private PermissionFactory permissionFactory;
 //
 //    private List<Class<? extends DefaultAclSecuredHandler>> aspects = new ArrayList<>();
@@ -33,11 +33,11 @@ public interface AclSecuredConfiguration {
 //        return this;
 //    }
 //
-//    public SidProvider getSidProvider() {
+//    public AclSidLookupStrategy getSidProvider() {
 //        return sidProvider;
 //    }
 //
-//    public AclSecuredConfiguration setSidProvider(SidProvider sidProvider) {
+//    public AclSecuredConfiguration setSidProvider(AclSidLookupStrategy sidProvider) {
 //        this.sidProvider = sidProvider;
 //        return this;
 //    }

@@ -4,6 +4,10 @@ public class AclRuntimeException extends RuntimeException {
 
     private String message;
 
+    public AclRuntimeException(Exception e) {
+        super(e);
+    }
+
     public AclRuntimeException(String message) {
         super(message);
     }

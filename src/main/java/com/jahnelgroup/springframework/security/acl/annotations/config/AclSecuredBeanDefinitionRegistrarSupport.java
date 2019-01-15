@@ -95,7 +95,7 @@ public abstract class AclSecuredBeanDefinitionRegistrarSupport implements Import
     }
 
     /**
-     * Return the annotation type to lookup configuration values from.
+     * Return the first type to lookup configuration values from.
      *
      * @return must not be {@literal null}.
      */

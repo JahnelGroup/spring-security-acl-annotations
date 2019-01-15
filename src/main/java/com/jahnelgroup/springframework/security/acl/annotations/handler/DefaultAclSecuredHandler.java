@@ -2,13 +2,10 @@ package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
 import com.jahnelgroup.springframework.security.acl.annotations.Ace;
 import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
-import com.jahnelgroup.springframework.security.acl.annotations.AclParent;
 import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
-import com.jahnelgroup.springframework.security.acl.annotations.config.AclSecuredConfiguration;
-import com.jahnelgroup.springframework.security.acl.annotations.parent.DefaultParentProvider;
-import com.jahnelgroup.springframework.security.acl.annotations.parent.ParentProvider;
-import com.jahnelgroup.springframework.security.acl.annotations.sid.DefaultSidProvider;
-import com.jahnelgroup.springframework.security.acl.annotations.sid.SidProvider;
+import com.jahnelgroup.springframework.security.acl.annotations.lookup.*;
+import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
+import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -21,7 +18,6 @@ import javax.transaction.Transactional;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.function.Consumer;
 
 public class DefaultAclSecuredHandler implements AclSecuredHandler, InitializingBean {
 
@@ -30,8 +26,11 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     protected Map<Class, Field> idMap = new HashMap<>();
     protected Map<Class, List<Tuple<Ace, Field>>> aceMap = new HashMap<>();
 
-    private SidProvider sidProvider = new DefaultSidProvider();
-    private ParentProvider parentProvider = new DefaultParentProvider();
+    private AclObjectIdLookupStrategy aclObjectIdLookupStrategy = new DefaultAclObjectIdLookupStrategy();
+    private AclParentLookupStrategy aclParentLookupStrategy = new DefaultAclParentLookupStrategy(aclObjectIdLookupStrategy);
+
+    private AclSidLookupStrategy sidProvider = new DefaultAclSidLookupStrategy();
+
 
     private PermissionFactory permissionFactory = new DefaultPermissionFactory();
     private Optional<MutableAclService> aclService;
@@ -41,12 +40,12 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     }
 
     /**
-     * Sets the {@link SidProvider} to use during ACL evaluation. Defaults to {@link DefaultSidProvider}.
+     * Sets the {@link AclSidLookupStrategy} to use during ACL evaluation. Defaults to {@link DefaultAclSidLookupStrategy}.
      *
      * @param sidProvider must not be {@literal null}.
      */
-    public void setSidProvider(SidProvider sidProvider) {
-        Assert.notNull(sidProvider, "SidProvider must not be null!");
+    public void setSidProvider(AclSidLookupStrategy sidProvider) {
+        Assert.notNull(sidProvider, "AclSidLookupStrategy must not be null!");
         this.sidProvider = sidProvider;
     }
 
@@ -81,10 +80,10 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     public void saveAcl(Object saved)  {
         aclService.ifPresent(aclService -> {
             try{
-                Field objectIdField = getObjectIdField(saved);
                 List<Tuple<Ace, Field>> aces = getAces(saved);
 
-                ObjectIdentityImpl oi = new ObjectIdentityImpl(saved.getClass(), (Serializable) objectIdField.get(saved));
+                ObjectIdentityImpl oi = new ObjectIdentityImpl(saved.getClass(),
+                        aclObjectIdLookupStrategy.lookup(saved).third);
 
                 //
                 // Access Control List
@@ -101,9 +100,9 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
                 for(int i=0; i<size; i++) acl.deleteAce(0);
 
                 // Set parent if it exists
-                Tuple<Class, Serializable> parentAcl = parentProvider.getParentObjectIdentity(saved);
+                Triple<Object, Field, Serializable> parentAcl = aclParentLookupStrategy.lookup(saved);
                 if( parentAcl != null ){
-                    ObjectIdentityImpl poi = new ObjectIdentityImpl(parentAcl.annotation, parentAcl.field);
+                    ObjectIdentityImpl poi = new ObjectIdentityImpl(parentAcl.first.getClass(), parentAcl.third);
                     acl.setParent(aclService.readAclById(poi));
                     acl.setEntriesInheriting(true);
                 }
@@ -114,12 +113,12 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
                 if( aces != null && !aces.isEmpty() ){
                     for(Tuple<Ace, Field> ace : aces){
                         for(Sid sid : getSid(ace, saved)){
-                            for (String p : ace.annotation.permissions()) {
+                            for (String p : ace.first.permissions()) {
                                 acl.insertAce(
                                         acl.getEntries().size(),
                                         getPermission(p),
                                         sid,
-                                        ace.annotation.granting());
+                                        ace.first.granting());
                             }
                         }
                     }
@@ -133,18 +132,12 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     }
 
-    @Transactional
-    @Override
-    public void saveAcl(Iterable<?> saved){
-        for(Object s : saved) saveAcl(s);
-    }
-
     @Override
     public void deleteAcl(Object deleted){
         aclService.ifPresent(aclService -> {
             try {
-                Field objectIdField = getObjectIdField(deleted);
-                ObjectIdentityImpl oi = new ObjectIdentityImpl(deleted.getClass(), (Serializable) objectIdField.get(deleted));
+                ObjectIdentityImpl oi = new ObjectIdentityImpl(deleted.getClass(),
+                        aclObjectIdLookupStrategy.lookup(deleted).third);
 
                 try{
                     aclService.deleteAcl(oi, true);
@@ -155,40 +148,6 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
                 throw new AclRuntimeException(e.getMessage(), e);
             }
         });
-    }
-
-    @Override
-    public void deleteAcl(Iterable<?> deleted){
-        for(Object d : deleted) deleteAcl(d);
-    }
-
-    protected Field getObjectIdField(Object saved) throws IllegalAccessException {
-        Field idField = null;
-        if( idMap.containsKey(saved.getClass()) ){
-            idField = idMap.get(saved.getClass());
-        }else{
-            List<Field> fields = getAllFields(new LinkedList<>(), saved.getClass());
-            if( !fields.isEmpty() ) {
-                for (Field field : fields) {
-                    AclObjectId id = field.getAnnotation(AclObjectId.class);
-                    if( id != null ){
-                        ReflectionUtils.makeAccessible(field);
-                        if(!(field.get(saved) instanceof Serializable)){
-                            throw new RuntimeException(String.format("Field %s for class %s must be Serializable",
-                                    field.getName(), saved.getClass().getCanonicalName()));
-                        }
-                        synchronized (idMap){
-                            if(!idMap.containsKey(saved.getClass())){
-                                idMap.put(saved.getClass(), idField = field);
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        return idField;
     }
 
     protected List<Tuple<Ace, Field>> getAces(Object saved) throws IllegalAccessException {
@@ -218,7 +177,7 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     // TODO: Cache
     protected List<Sid> getSid(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
-        return sidProvider.mapToSids(ace.annotation, ace.field, saved);
+        return sidProvider.mapToSids(ace.first, ace.second, saved);
     }
 
     private Permission getPermission(String perm){
