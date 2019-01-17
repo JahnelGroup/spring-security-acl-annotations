@@ -2,8 +2,11 @@ package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
 import com.jahnelgroup.springframework.security.acl.annotations.Ace;
 import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
+import com.jahnelgroup.springframework.security.acl.annotations.AclParent;
 import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
 import com.jahnelgroup.springframework.security.acl.annotations.lookup.*;
+import com.jahnelgroup.springframework.security.acl.annotations.mapper.AclEntryToSidsMapper;
+import com.jahnelgroup.springframework.security.acl.annotations.mapper.DefaultAclEntryToSidsMapper;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 import org.slf4j.Logger;
@@ -28,48 +31,27 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     private AclObjectIdLookupStrategy aclObjectIdLookupStrategy = new DefaultAclObjectIdLookupStrategy();
     private AclParentLookupStrategy aclParentLookupStrategy = new DefaultAclParentLookupStrategy(aclObjectIdLookupStrategy);
-
-    private AclSidLookupStrategy sidProvider = new DefaultAclSidLookupStrategy();
-
+    private AclSidLookupStrategy aclSidLookupStrategy = new DefaultAclSidLookupStrategy();
+    private AclEntryToSidsMapper aclEntryToSidsMapper = new DefaultAclEntryToSidsMapper(aclSidLookupStrategy);
 
     private PermissionFactory permissionFactory = new DefaultPermissionFactory();
-    private Optional<MutableAclService> aclService;
+    private MutableAclService aclService;
 
     public DefaultAclSecuredHandler(){
         logger.info("DefaultAclSecuredHandler loaded.");
     }
 
     /**
-     * Sets the {@link AclSidLookupStrategy} to use during ACL evaluation. Defaults to {@link DefaultAclSidLookupStrategy}.
-     *
-     * @param sidProvider must not be {@literal null}.
-     */
-    public void setSidProvider(AclSidLookupStrategy sidProvider) {
-        Assert.notNull(sidProvider, "AclSidLookupStrategy must not be null!");
-        this.sidProvider = sidProvider;
-    }
-
-    /**
-     * Sets the {@link PermissionFactory} to use during ACL evaluation. Defaults to {@link DefaultPermissionFactory}.
-     *
-     * @param permissionFactory must not be {@literal null}.
-     */
-    public void setPermissionFactory(PermissionFactory permissionFactory) {
-        Assert.notNull(permissionFactory, "PermissionFactory must not be null!");
-        this.permissionFactory = permissionFactory;
-    }
-
-    /**
      * Sets the {@link AclService} to use during ACL evaluation.
      * @param aclService
      */
-    public void setAclService(Optional<MutableAclService> aclService) {
+    public void setAclService(MutableAclService aclService) {
         Assert.notNull(permissionFactory, "AclService must not be null!");
         this.aclService = aclService;
     }
 
     public void afterPropertiesSet() {
-        if (!aclService.isPresent()) {
+        if (aclService == null ) {
             // is it better to just warn and move on?
             throw new AclRuntimeException("No AclService set! Please review your configuration.");
         }
@@ -78,76 +60,82 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     @Transactional
     @Override
     public void saveAcl(Object saved)  {
-        aclService.ifPresent(aclService -> {
-            try{
-                List<Tuple<Ace, Field>> aces = getAces(saved);
+        try{
+            MutableAcl acl = getAcl(saved);
+            deleteAllAclEntries(acl, saved);
+            setAclParentIfExists(acl, saved);
+            insertAclEntries(acl, saved);
+            aclService.updateAcl(acl);
+        }catch(Exception e){
+            throw new AclRuntimeException(e.getMessage(), e);
+        }
 
-                ObjectIdentityImpl oi = new ObjectIdentityImpl(saved.getClass(),
-                        aclObjectIdLookupStrategy.lookup(saved).third);
+    }
 
-                //
-                // Access Control List
-                //
-                MutableAcl acl = null;
-                try{
-                    acl = (MutableAcl) aclService.readAclById(oi);
-                }catch(NotFoundException nfe){
-                    acl = aclService.createAcl(oi);
-                }
+    private MutableAcl getAcl(Object saved) throws IllegalAccessException {
+        Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(saved);
 
-                // Delete all current entries
-                int size = acl.getEntries().size();
-                for(int i=0; i<size; i++) acl.deleteAce(0);
+        ObjectIdentityImpl oi = new ObjectIdentityImpl(saved.getClass(),
+                (Serializable) objectId.second.get(objectId.first));
 
-                // Set parent if it exists
-                Triple<Object, Field, Serializable> parentAcl = aclParentLookupStrategy.lookup(saved);
-                if( parentAcl != null ){
-                    ObjectIdentityImpl poi = new ObjectIdentityImpl(parentAcl.first.getClass(), parentAcl.third);
-                    acl.setParent(aclService.readAclById(poi));
-                    acl.setEntriesInheriting(true);
-                }
+        MutableAcl acl;
+        try{
+            acl = (MutableAcl) aclService.readAclById(oi);
+        }catch(NotFoundException nfe){
+            acl = aclService.createAcl(oi);
+        }
 
-                //
-                // Access Control Entries (ACE's)
-                //
-                if( aces != null && !aces.isEmpty() ){
-                    for(Tuple<Ace, Field> ace : aces){
-                        for(Sid sid : getSid(ace, saved)){
-                            for (String p : ace.first.permissions()) {
-                                acl.insertAce(
-                                        acl.getEntries().size(),
-                                        getPermission(p),
-                                        sid,
-                                        ace.first.granting());
-                            }
-                        }
+        return acl;
+    }
+
+    private void deleteAllAclEntries(MutableAcl acl, Object saved) {
+        int size = acl.getEntries().size();
+        for(int i=0; i<size; i++) acl.deleteAce(0);
+    }
+
+    private void setAclParentIfExists(MutableAcl acl, Object saved) throws IllegalAccessException {
+        Triple<Object, Field, AclParent> parentAcl = aclParentLookupStrategy.lookup(saved);
+        if( parentAcl != null ){
+            ObjectIdentityImpl oi = new ObjectIdentityImpl(parentAcl.first.getClass(),
+                    (Serializable)parentAcl.second.get(parentAcl.first));
+            acl.setParent(aclService.readAclById(oi));
+            acl.setEntriesInheriting(parentAcl.third.inheriting());
+        }
+    }
+
+    private void insertAclEntries(MutableAcl acl, Object saved) throws IllegalAccessException {
+        List<Tuple<Ace, Field>> aces = getAces(saved);
+        if( aces != null && !aces.isEmpty() ){
+            for(Tuple<Ace, Field> ace : aces){
+                for(Sid sid : getSid(ace, saved)){
+                    for (String p : ace.first.permissions()) {
+                        acl.insertAce(
+                                acl.getEntries().size(),
+                                getPermission(p),
+                                sid,
+                                ace.first.granting());
                     }
                 }
-
-                aclService.updateAcl(acl);
-            }catch(Exception e){
-                throw new AclRuntimeException(e.getMessage(), e);
             }
-        });
-
+        }
     }
 
     @Override
     public void deleteAcl(Object deleted){
-        aclService.ifPresent(aclService -> {
-            try {
-                ObjectIdentityImpl oi = new ObjectIdentityImpl(deleted.getClass(),
-                        aclObjectIdLookupStrategy.lookup(deleted).third);
+        try {
+            Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(deleted);
 
-                try{
-                    aclService.deleteAcl(oi, true);
-                }catch(ChildrenExistException nfe){
-                    // nothing to do
-                }
-            } catch (Exception e) {
-                throw new AclRuntimeException(e.getMessage(), e);
+            ObjectIdentityImpl oi = new ObjectIdentityImpl(deleted.getClass(),
+                    (Serializable) objectId.second.get(objectId.first));
+            try{
+                aclService.deleteAcl(oi, true);
+            }catch(ChildrenExistException nfe){
+                // nothing to do
             }
-        });
+        } catch (Exception e) {
+            throw new AclRuntimeException(e);
+        }
+
     }
 
     protected List<Tuple<Ace, Field>> getAces(Object saved) throws IllegalAccessException {
@@ -175,9 +163,8 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         return aces;
     }
 
-    // TODO: Cache
     protected List<Sid> getSid(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
-        return sidProvider.mapToSids(ace.first, ace.second, saved);
+        return aclEntryToSidsMapper.mapFieldToSids(saved, ace.second, ace.first);
     }
 
     private Permission getPermission(String perm){

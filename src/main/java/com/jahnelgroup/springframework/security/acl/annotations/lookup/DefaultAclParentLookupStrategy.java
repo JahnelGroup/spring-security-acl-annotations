@@ -23,11 +23,9 @@ public class DefaultAclParentLookupStrategy implements AclParentLookupStrategy {
     }
 
     @Override
-    public Triple<Object, Field, Serializable> lookup(Object object) throws IllegalAccessException {
-        Field foundField = null;
-
+    public Triple<Object, Field, AclParent> lookup(Object object) throws IllegalAccessException {
         // Find the @AclParent field.
-        Triple<Object, Field, AclObjectId> found = ReflectionHelper.findAnnotatedField(object, AclObjectId.class, (fieldObject, field) -> {
+        Triple<Object, Field, AclParent> parent = ReflectionHelper.findAnnotatedField(object, AclParent.class, (fieldObject, field) -> {
             if (fieldObject.getClass().getAnnotation(AclSecured.class) == null) {
                 throw new RuntimeException(String.format("@Field %s for class %s is annotated as @AclParent " +
                                 "but the class is not annotated with @AclSecured.",
@@ -35,8 +33,15 @@ public class DefaultAclParentLookupStrategy implements AclParentLookupStrategy {
             }
         });
 
-        // Find the @AclObjectId field.
-        return aclObjectIdLookupStrategy.lookup(found.first);
+        Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(parent.first);
+        if( object == null ){
+            throw new RuntimeException(String.format("@Field %s for class %s is annotated as @AclParent " +
+                            "but the class %s does not define @AclObjectId.",
+                    parent.second.getName(), object.getClass().getCanonicalName(),
+                    parent.first.getClass().getCanonicalName()));
+        }
+
+        return new Triple<>(objectId.first, objectId.second, parent.third);
     }
 
 }
