@@ -1,6 +1,6 @@
 package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
-import com.jahnelgroup.springframework.security.acl.annotations.Ace;
+import com.jahnelgroup.springframework.security.acl.annotations.AclAce;
 import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
 import com.jahnelgroup.springframework.security.acl.annotations.AclParent;
 import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
@@ -15,7 +15,6 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.security.acls.domain.*;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
-import org.springframework.util.ReflectionUtils;
 
 import javax.transaction.Transactional;
 import java.io.Serializable;
@@ -26,9 +25,7 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultAclSecuredHandler.class);
 
-    protected Map<Class, Field> idMap = new HashMap<>();
-    protected Map<Class, List<Tuple<Ace, Field>>> aceMap = new HashMap<>();
-
+    private AclAceLookupStrategy aclAceLookupStrategy = new DefaultAclAceLookupStrategy();
     private AclObjectIdLookupStrategy aclObjectIdLookupStrategy = new DefaultAclObjectIdLookupStrategy();
     private AclParentLookupStrategy aclParentLookupStrategy = new DefaultAclParentLookupStrategy(aclObjectIdLookupStrategy);
     private AclSidLookupStrategy aclSidLookupStrategy = new DefaultAclSidLookupStrategy();
@@ -103,24 +100,42 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         }
     }
 
-    //
-    // TODO: Eliminate duplicates -> steven:AWRWR
-    //
     private void insertAclEntries(MutableAcl acl, Object saved) throws IllegalAccessException {
-        List<Tuple<Ace, Field>> aces = getAces(saved);
-        if( aces != null && !aces.isEmpty() ){
-            for(Tuple<Ace, Field> ace : aces){
-                for(Sid sid : getSids(ace, saved)){
-                    for (String p : ace.first.permissions()) {
+        Map<Integer, Map<Integer, Boolean>> entries = new HashMap<>();
+        for(Tuple<Field, AclAce> ace : getAces(saved)){
+            for(Sid sid : getSids(ace, saved)){
+                for (String p : ace.second.permissions()) {
+                    Permission permission = getPermission(p);
+                    if(notDuplicatePermissionEntry(sid.hashCode(), permission.getMask(), entries))
                         acl.insertAce(
-                                acl.getEntries().size(),
-                                getPermission(p),
-                                sid,
-                                ace.first.granting());
-                    }
+                            acl.getEntries().size(),
+                            getPermission(p),
+                            sid,
+                            ace.second.granting());
                 }
             }
         }
+    }
+
+    /**
+     * Return true if this sid/permission combination is NOT a duplicate based on the entries map provided.
+     *
+     * @param sidHashcode
+     * @param permissionMask
+     * @param entries
+     * @return
+     */
+    private boolean notDuplicatePermissionEntry(Integer sidHashcode, Integer permissionMask, Map<Integer, Map<Integer, Boolean>> entries){
+        if(entries.containsKey(sidHashcode) ){
+            if(entries.get(sidHashcode).containsKey(permissionMask))
+                return false;
+            else
+                entries.get(sidHashcode).put(permissionMask, true);
+        }else{
+            entries.put(sidHashcode, new HashMap<>());
+            entries.get(sidHashcode).put(permissionMask, true);
+        }
+        return true;
     }
 
     @Override
@@ -141,46 +156,21 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     }
 
-    protected List<Tuple<Ace, Field>> getAces(Object saved) throws IllegalAccessException {
-        List<Tuple<Ace, Field>> aces = null;
-        if( aceMap.containsKey(saved.getClass())){
-            aces = aceMap.get(saved.getClass());
-        }else{
-            List<Field> fields = getAllFields(new LinkedList<>(), saved.getClass());
-            if( !fields.isEmpty() ) {
-                for (Field field : fields) {
-                    Ace ace = field.getAnnotation(Ace.class);
-                    if( ace != null ){
-                        if(aces == null) aces = new ArrayList<>();
-                        ReflectionUtils.makeAccessible(field);
-                        aces.add(new Tuple<>(ace, field));
-                    }
-                }
-                synchronized (aceMap){
-                    if( !aceMap.containsKey(saved.getClass()) ){
-                        aceMap.put(saved.getClass(), aces);
-                    }
-                }
-            }
-        }
-        return aces;
+    protected List<Tuple<Field, AclAce>> getAces(Object saved) throws IllegalAccessException {
+        Tuple<Object, List<Tuple<Field, AclAce>>> result = aclAceLookupStrategy.lookup(saved);
+
+        if( result == null || result.second == null || result.second.isEmpty() )
+            return new LinkedList<>();
+
+        return result.second;
     }
 
-    protected List<Sid> getSids(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
-        return aclEntryToSidsMapper.mapFieldToSids(saved, ace.second, ace.first);
+    protected List<Sid> getSids(Tuple<Field, AclAce> ace, Object saved) throws IllegalAccessException {
+        return aclEntryToSidsMapper.mapFieldToSids(saved, ace.first, ace.second);
     }
 
     private Permission getPermission(String perm){
         return permissionFactory.buildFromName(perm.toUpperCase());
-    }
-
-    private List<Field> getAllFields(List<Field> fields, Class<?> type) {
-        fields.addAll(Arrays.asList(type.getDeclaredFields()));
-
-        if (type.getSuperclass() != null) {
-            getAllFields(fields, type.getSuperclass());
-        }
-        return fields;
     }
 
 }

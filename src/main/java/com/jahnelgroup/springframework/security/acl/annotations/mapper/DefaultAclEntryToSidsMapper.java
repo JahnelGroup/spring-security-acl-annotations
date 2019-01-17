@@ -1,10 +1,9 @@
 package com.jahnelgroup.springframework.security.acl.annotations.mapper;
 
-import com.jahnelgroup.springframework.security.acl.annotations.Ace;
+import com.jahnelgroup.springframework.security.acl.annotations.AclAce;
 import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
 import com.jahnelgroup.springframework.security.acl.annotations.AclSid;
 import com.jahnelgroup.springframework.security.acl.annotations.lookup.AclSidLookupStrategy;
-import com.jahnelgroup.springframework.security.acl.annotations.util.ReflectionHelper;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 import org.springframework.core.ResolvableType;
@@ -28,7 +27,7 @@ public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
     }
 
     /**
-     * This method is presumably called after finding a field annotated with {@link Ace}. We need
+     * This method is presumably called after finding a field annotated with {@link AclAce}. We need
      * to map the value of that field to the Spring ACL SID's associated with it.
      *
      * In the simplest case the field is a String, Character or Number.
@@ -41,7 +40,7 @@ public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
      * @return
      */
     @Override
-    public List<Sid> mapFieldToSids(Object object, Field field, Ace aclEntry) {
+    public List<Sid> mapFieldToSids(Object object, Field field, AclAce aclEntry) {
         try{
             Tuple<AclSid, List<Serializable>> aclSidListTuple = mapToSerializable(object, field);
 
@@ -53,7 +52,7 @@ public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
         }
     }
 
-    private boolean isPrincipal(Object object, Field field, Ace aclEntry, Tuple<AclSid, List<Serializable>> aclSidListTuple) throws Exception {
+    private boolean isPrincipal(Object object, Field field, AclAce aclEntry, Tuple<AclSid, List<Serializable>> aclSidListTuple) throws Exception {
         if( aclSidListTuple.first == null ){
             if (aclEntry.sid() == null){
                 throw new Exception(String.format("Unable to determine if sids are principal or granted authority " +
