@@ -33,6 +33,9 @@ public class DefaultAclParentLookupStrategy implements AclParentLookupStrategy {
             }
         });
 
+        if( parent == null )
+            return null;
+
         Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(parent.first);
         if( object == null ){
             throw new RuntimeException(String.format("@Field %s for class %s is annotated as @AclParent " +

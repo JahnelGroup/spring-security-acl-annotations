@@ -108,7 +108,7 @@ public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
             Triple<Object, Field, AclSid> result = aclSidLookupStrategy.lookup(value);
 
             if(result != null)
-                return new Tuple<>(result.third, Arrays.asList((Serializable) value));
+                return new Tuple<>(result.third, Arrays.asList((Serializable) result.second.get(result.first)));
         }
 
         throw new AclRuntimeException(String.format("Unable to find @AclSid for field %s on class %s",

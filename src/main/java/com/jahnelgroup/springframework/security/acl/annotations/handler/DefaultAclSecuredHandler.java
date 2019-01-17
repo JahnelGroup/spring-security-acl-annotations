@@ -103,11 +103,14 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         }
     }
 
+    //
+    // TODO: Eliminate duplicates -> steven:AWRWR
+    //
     private void insertAclEntries(MutableAcl acl, Object saved) throws IllegalAccessException {
         List<Tuple<Ace, Field>> aces = getAces(saved);
         if( aces != null && !aces.isEmpty() ){
             for(Tuple<Ace, Field> ace : aces){
-                for(Sid sid : getSid(ace, saved)){
+                for(Sid sid : getSids(ace, saved)){
                     for (String p : ace.first.permissions()) {
                         acl.insertAce(
                                 acl.getEntries().size(),
@@ -163,7 +166,7 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         return aces;
     }
 
-    protected List<Sid> getSid(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
+    protected List<Sid> getSids(Tuple<Ace, Field> ace, Object saved) throws IllegalAccessException {
         return aclEntryToSidsMapper.mapFieldToSids(saved, ace.second, ace.first);
     }
 
