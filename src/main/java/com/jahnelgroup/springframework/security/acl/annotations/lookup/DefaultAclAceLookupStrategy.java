@@ -12,12 +12,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Default implementation of {@link AclAceLookupStrategy}.
+ *
+ * @author Steven Zgaljic
+ */
 public class DefaultAclAceLookupStrategy implements AclAceLookupStrategy{
 
     protected Map<Class, List<Tuple<Field, AclAce>>> cache = new HashMap<>();
 
     @Override
-    public Tuple<Object, List<Tuple<Field, AclAce>>> lookup(Object object) throws IllegalAccessException {
+    public List<Tuple<Field, AclAce>> lookup(Object object) {
         List<Tuple<Field, AclAce>> result = new LinkedList<>();
 
         if( cache.containsKey(object.getClass()) ){
@@ -37,7 +42,7 @@ public class DefaultAclAceLookupStrategy implements AclAceLookupStrategy{
             }
         }
 
-        return new Tuple<>(object, result);
+        return result;
     }
 
 }

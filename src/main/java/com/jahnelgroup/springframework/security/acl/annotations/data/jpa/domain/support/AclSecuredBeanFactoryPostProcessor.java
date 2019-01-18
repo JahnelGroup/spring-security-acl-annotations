@@ -16,7 +16,7 @@ import static org.springframework.util.StringUtils.addStringToArray;
  * entity listeners and we need to get injection into {@link org.springframework.beans.factory.annotation.Configurable}
  * to work in them.
  *
- * Inspired entirely by {@link org.springframework.data.jpa.domain.support.AuditingBeanFactoryPostProcessor}
+ * Derived and inspired by {@link org.springframework.data.jpa.domain.support.AuditingBeanFactoryPostProcessor}
  *
  * @author Steven Zgaljic
  */

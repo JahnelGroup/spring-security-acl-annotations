@@ -1,6 +1,7 @@
 package com.jahnelgroup.springframework.security.acl.annotations.lookup;
 
 import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
+import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
 import com.jahnelgroup.springframework.security.acl.annotations.util.ReflectionHelper;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
@@ -9,6 +10,11 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Default implementation of {@link AclObjectIdLookupStrategy}.
+ *
+ * @author Steven Zgaljic
+ */
 public class DefaultAclObjectIdLookupStrategy implements AclObjectIdLookupStrategy {
 
     protected Map<Class, Tuple<Field, AclObjectId>> cache = new HashMap<>();
@@ -24,7 +30,7 @@ public class DefaultAclObjectIdLookupStrategy implements AclObjectIdLookupStrate
                     AclObjectId.class, ReflectionHelper.IsSerializableConsumer());
 
             if( found == null ){
-                throw new RuntimeException(String.format("Unable to find @AclObjectId for class %s",
+                throw new AclRuntimeException(String.format("Unable to find @AclObjectId for class %s",
                     object.getClass().getCanonicalName()));
             }
 

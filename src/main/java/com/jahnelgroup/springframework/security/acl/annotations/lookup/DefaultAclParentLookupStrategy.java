@@ -12,6 +12,11 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.*;
 
+/**
+ * Default implementation of {@link AclParentLookupStrategy}.
+ *
+ * @author Steven Zgaljic
+ */
 public class DefaultAclParentLookupStrategy implements AclParentLookupStrategy {
 
     protected Map<Class, Field> cache = new HashMap<>();
@@ -23,7 +28,7 @@ public class DefaultAclParentLookupStrategy implements AclParentLookupStrategy {
     }
 
     @Override
-    public Triple<Object, Field, AclParent> lookup(Object object) throws IllegalAccessException {
+    public Triple<Object, Field, AclParent> lookup(Object object) {
         // Find the @AclParent field.
         Triple<Object, Field, AclParent> parent = ReflectionHelper.findAnnotatedField(object, AclParent.class, (fieldObject, field) -> {
             if (fieldObject.getClass().getAnnotation(AclSecured.class) == null) {
@@ -37,7 +42,7 @@ public class DefaultAclParentLookupStrategy implements AclParentLookupStrategy {
             return null;
 
         Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(parent.first);
-        if( object == null ){
+        if( objectId == null ){
             throw new RuntimeException(String.format("@Field %s for class %s is annotated as @AclParent " +
                             "but the class %s does not define @AclObjectId.",
                     parent.second.getName(), object.getClass().getCanonicalName(),

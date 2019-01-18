@@ -1,9 +1,6 @@
 package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
-import com.jahnelgroup.springframework.security.acl.annotations.AclAce;
-import com.jahnelgroup.springframework.security.acl.annotations.AclObjectId;
-import com.jahnelgroup.springframework.security.acl.annotations.AclParent;
-import com.jahnelgroup.springframework.security.acl.annotations.AclRuntimeException;
+import com.jahnelgroup.springframework.security.acl.annotations.*;
 import com.jahnelgroup.springframework.security.acl.annotations.lookup.*;
 import com.jahnelgroup.springframework.security.acl.annotations.mapper.AclEntryToSidsMapper;
 import com.jahnelgroup.springframework.security.acl.annotations.mapper.DefaultAclEntryToSidsMapper;
@@ -12,27 +9,38 @@ import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.security.acls.domain.*;
+import org.springframework.security.acls.domain.DefaultPermissionFactory;
+import org.springframework.security.acls.domain.ObjectIdentityImpl;
+import org.springframework.security.acls.domain.PermissionFactory;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
 
 import javax.transaction.Transactional;
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * Default ACL secured handler to create, update and delete ACLs.
+ *
+ * @author Steven Zgaljic
+ */
 public class DefaultAclSecuredHandler implements AclSecuredHandler, InitializingBean {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultAclSecuredHandler.class);
+
+    private PermissionFactory permissionFactory = new DefaultPermissionFactory();
+    private MutableAclService aclService;
 
     private AclAceLookupStrategy aclAceLookupStrategy = new DefaultAclAceLookupStrategy();
     private AclObjectIdLookupStrategy aclObjectIdLookupStrategy = new DefaultAclObjectIdLookupStrategy();
     private AclParentLookupStrategy aclParentLookupStrategy = new DefaultAclParentLookupStrategy(aclObjectIdLookupStrategy);
     private AclSidLookupStrategy aclSidLookupStrategy = new DefaultAclSidLookupStrategy();
     private AclEntryToSidsMapper aclEntryToSidsMapper = new DefaultAclEntryToSidsMapper(aclSidLookupStrategy);
-
-    private PermissionFactory permissionFactory = new DefaultPermissionFactory();
-    private MutableAclService aclService;
+    private AclPermissionLookStrategy aclPermissionLookStrategy = new DefaultAclPermissionStrategy(permissionFactory);
 
     public DefaultAclSecuredHandler(){
         logger.info("DefaultAclSecuredHandler loaded.");
@@ -40,39 +48,164 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     /**
      * Sets the {@link AclService} to use during ACL evaluation.
+     *
      * @param aclService
      */
+    @Override
     public void setAclService(MutableAclService aclService) {
-        Assert.notNull(permissionFactory, "AclService must not be null!");
+        Assert.notNull(aclService, "AclService must not be null!");
         this.aclService = aclService;
     }
 
-    public void afterPropertiesSet() {
-        if (aclService == null ) {
-            // is it better to just warn and move on?
-            throw new AclRuntimeException("No AclService set! Please review your configuration.");
-        }
+    /**
+     * Sets the {@link PermissionFactory} to use during ACL evaluation.
+     *
+     * @param permissionFactory
+     */
+    public void setPermissionFactory(PermissionFactory permissionFactory) {
+        Assert.notNull(permissionFactory, "PermissionFactory must not be null!");
+        this.permissionFactory = permissionFactory;
     }
 
-    @Transactional
+    /**
+     * Sets the {@link AclAceLookupStrategy} to use during ACL evaluation.
+     *
+     * @param aclAceLookupStrategy
+     */
+    public void setAclAceLookupStrategy(AclAceLookupStrategy aclAceLookupStrategy) {
+        Assert.notNull(aclAceLookupStrategy, "AclAceLookupStrategy must not be null!");
+        this.aclAceLookupStrategy = aclAceLookupStrategy;
+    }
+
+    /**
+     * Sets the {@link AclObjectIdLookupStrategy} to use during ACL evaluation.
+     *
+     * @param aclObjectIdLookupStrategy
+     */
+    public void setAclObjectIdLookupStrategy(AclObjectIdLookupStrategy aclObjectIdLookupStrategy) {
+        Assert.notNull(aclObjectIdLookupStrategy, "AclObjectIdLookupStrategy must not be null!");
+        this.aclObjectIdLookupStrategy = aclObjectIdLookupStrategy;
+    }
+
+    /**
+     * Sets the {@link AclParentLookupStrategy} to use during ACL evaluation.
+     *
+     * @param aclParentLookupStrategy
+     */
+    public void setAclParentLookupStrategy(AclParentLookupStrategy aclParentLookupStrategy) {
+        Assert.notNull(aclParentLookupStrategy, "AclParentLookupStrategy must not be null!");
+        this.aclParentLookupStrategy = aclParentLookupStrategy;
+    }
+
+    /**
+     * Sets the {@link AclSidLookupStrategy} to use during ACL evaluation.
+     *
+     * @param aclSidLookupStrategy
+     */
+    public void setAclSidLookupStrategy(AclSidLookupStrategy aclSidLookupStrategy) {
+        Assert.notNull(aclSidLookupStrategy, "AclSidLookupStrategy must not be null!");
+        this.aclSidLookupStrategy = aclSidLookupStrategy;
+    }
+
+    /**
+     * Sets the {@link AclEntryToSidsMapper} to use during ACL evaluation.
+     *
+     * @param aclEntryToSidsMapper
+     */
+    public void setAclEntryToSidsMapper(AclEntryToSidsMapper aclEntryToSidsMapper) {
+        Assert.notNull(aclEntryToSidsMapper, "AclEntryToSidsMapper must not be null!");
+        this.aclEntryToSidsMapper = aclEntryToSidsMapper;
+    }
+
+    /**
+     * Sets the {@link AclPermissionLookStrategy} to use during ACL evaluation.
+     *
+     * @param aclPermissionLookStrategy
+     */
+    public void setAclPermissionLookStrategy(AclPermissionLookStrategy aclPermissionLookStrategy) {
+        Assert.notNull(aclPermissionLookStrategy, "AclPermissionLookStrategy must not be null!");
+        this.aclPermissionLookStrategy = aclPermissionLookStrategy;
+    }
+
+    /**
+     * Validates that all dependencies are set.
+     */
+    public void afterPropertiesSet() {
+        if (aclService == null )
+            throw new AclRuntimeException("No AclService set! Please review your configuration.");
+        if (permissionFactory == null )
+            throw new AclRuntimeException("No PermissionFactory set! Please review your configuration.");
+        if (aclAceLookupStrategy == null )
+            throw new AclRuntimeException("No AclAceLookupStrategy set! Please review your configuration.");
+        if (aclObjectIdLookupStrategy == null )
+            throw new AclRuntimeException("No AclObjectIdLookupStrategy set! Please review your configuration.");
+        if (aclParentLookupStrategy == null )
+            throw new AclRuntimeException("No AclParentLookupStrategy set! Please review your configuration.");
+        if (aclSidLookupStrategy == null )
+            throw new AclRuntimeException("No AclSidLookupStrategy set! Please review your configuration.");
+        if (aclEntryToSidsMapper == null )
+            throw new AclRuntimeException("No AclEntryToSidsMapper set! Please review your configuration.");
+        if (aclPermissionLookStrategy == null )
+            throw new AclRuntimeException("No AclPermissionLookStrategy set! Please review your configuration.");
+    }
+
+    /**
+     * Creates a new ACL for the saved Object.
+     *
+     * @param saved
+     */
     @Override
+    public void createAcl(Object saved) {
+        saveAcl(saved);
+    }
+
+    /**
+     * Updates an existing ACL for the saved Object.
+     *
+     * @param saved
+     */
+    @Override
+    public void updateAcl(Object saved) {
+        saveAcl(saved);
+    }
+
+    /**
+     * Creates a new ACL or updates an existing ACL for the saved Object.
+     *
+     * @param saved
+     */
+    @Transactional
     public void saveAcl(Object saved)  {
         try{
             MutableAcl acl = getAcl(saved);
-            deleteAllAclEntries(acl, saved);
+            deleteAllAclEntries(acl);
             setAclParentIfExists(acl, saved);
             insertAclEntries(acl, saved);
             aclService.updateAcl(acl);
         }catch(Exception e){
             throw new AclRuntimeException(e.getMessage(), e);
         }
-
     }
 
-    private MutableAcl getAcl(Object saved) throws IllegalAccessException {
-        Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(saved);
+    /**
+     * Returns a reference to the ACL for the provided Object. If no ACL is found then a new empty ACL will
+     * be created and returned.
+     *
+     * The provided Object must satisfy these conditions:
+     *
+     * 1. The Object's class must be annotated with {@link AclSecured}
+     * 2. The Object must have a single Serializable field annotated with {@link AclObjectId} somewhere in it's hierarchy.
+     * 2. The Object must have a single Serializable field annotated with {@link AclSid} somewhere in it's hierarchy.
+     * 3.
+     *
+     * @param object
+     * @return
+     * @throws IllegalAccessException
+     */
+    private MutableAcl getAcl(Object object) throws IllegalAccessException {
+        Triple<Object, Field, AclObjectId> objectId = aclObjectIdLookupStrategy.lookup(object);
 
-        ObjectIdentityImpl oi = new ObjectIdentityImpl(saved.getClass(),
+        ObjectIdentityImpl oi = new ObjectIdentityImpl(object.getClass(),
                 (Serializable) objectId.second.get(objectId.first));
 
         MutableAcl acl;
@@ -85,13 +218,25 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         return acl;
     }
 
-    private void deleteAllAclEntries(MutableAcl acl, Object saved) {
+    /**
+     * Removes all AccessControlEntry's for the provided ACL.
+     *
+     * @param acl
+     */
+    private void deleteAllAclEntries(MutableAcl acl) {
         int size = acl.getEntries().size();
         for(int i=0; i<size; i++) acl.deleteAce(0);
     }
 
-    private void setAclParentIfExists(MutableAcl acl, Object saved) throws IllegalAccessException {
-        Triple<Object, Field, AclParent> parentAcl = aclParentLookupStrategy.lookup(saved);
+    /**
+     * Inspects the provided Object for {@link AclParent} configurations and set the parent ACL if it exists.
+     *
+     * @param acl
+     * @param object
+     * @throws IllegalAccessException
+     */
+    private void setAclParentIfExists(MutableAcl acl, Object object) throws IllegalAccessException {
+        Triple<Object, Field, AclParent> parentAcl = aclParentLookupStrategy.lookup(object);
         if( parentAcl != null ){
             ObjectIdentityImpl oi = new ObjectIdentityImpl(parentAcl.first.getClass(),
                     (Serializable)parentAcl.second.get(parentAcl.first));
@@ -100,10 +245,18 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         }
     }
 
-    private void insertAclEntries(MutableAcl acl, Object saved) throws IllegalAccessException {
+    /**
+     * Lookup {@link AclAce} configurations for the provided Object and insert entries into the
+     * ACL for each associated {@link AclSid}.
+     *
+     * @param acl
+     * @param object
+     * @throws IllegalAccessException
+     */
+    private void insertAclEntries(MutableAcl acl, Object object) throws IllegalAccessException {
         Map<Integer, Map<Integer, Boolean>> entries = new HashMap<>();
-        for(Tuple<Field, AclAce> ace : getAces(saved)){
-            for(Sid sid : getSids(ace, saved)){
+        for(Tuple<Field, AclAce> ace : getAces(object)){
+            for(Sid sid : getSids(ace, object)){
                 for (String p : ace.second.permissions()) {
                     Permission permission = getPermission(p);
                     if(notDuplicatePermissionEntry(sid.hashCode(), permission.getMask(), entries))
@@ -125,7 +278,8 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      * @param entries
      * @return
      */
-    private boolean notDuplicatePermissionEntry(Integer sidHashcode, Integer permissionMask, Map<Integer, Map<Integer, Boolean>> entries){
+    private boolean notDuplicatePermissionEntry(Integer sidHashcode, Integer permissionMask,
+            Map<Integer, Map<Integer, Boolean>> entries){
         if(entries.containsKey(sidHashcode) ){
             if(entries.get(sidHashcode).containsKey(permissionMask))
                 return false;
@@ -138,6 +292,11 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
         return true;
     }
 
+    /**
+     * Deletes the entire ACL for the provided Object.
+     *
+     * @param deleted
+     */
     @Override
     public void deleteAcl(Object deleted){
         try {
@@ -156,19 +315,41 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
 
     }
 
+    /**
+     * Looks up the {@link AclAce} configurations for the provided Object and returns a List with the
+     * reflected and associated annotation.
+     *
+     * @param saved
+     * @return
+     * @throws IllegalAccessException
+     */
     protected List<Tuple<Field, AclAce>> getAces(Object saved) throws IllegalAccessException {
-        Tuple<Object, List<Tuple<Field, AclAce>>> result = aclAceLookupStrategy.lookup(saved);
+        List<Tuple<Field, AclAce>> result = aclAceLookupStrategy.lookup(saved);
 
-        if( result == null || result.second == null || result.second.isEmpty() )
+        if( result == null || result.isEmpty() )
             return new LinkedList<>();
 
-        return result.second;
+        return result;
     }
 
+    /**
+     * Maps the {@link AclAce} for the provided Object into a List of associated {@link Sid}'s.
+     *
+     * @param ace
+     * @param saved
+     * @return
+     * @throws IllegalAccessException
+     */
     protected List<Sid> getSids(Tuple<Field, AclAce> ace, Object saved) throws IllegalAccessException {
         return aclEntryToSidsMapper.mapFieldToSids(saved, ace.first, ace.second);
     }
 
+    /**
+     * Uses the configured {@link PermissionFactory} to lookup {@link Permission} based on the permission name.
+     *
+     * @param perm
+     * @return
+     */
     private Permission getPermission(String perm){
         return permissionFactory.buildFromName(perm.toUpperCase());
     }

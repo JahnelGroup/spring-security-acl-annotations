@@ -14,7 +14,7 @@ import javax.persistence.*;
 /**
  * JPA entity listener to capture ACL information on persiting, updating and deleting entities.
  *
- * Inspired entirely by {@link org.springframework.data.jpa.domain.support.AuditingEntityListener}
+ * Derived and inspired by {@link org.springframework.data.jpa.domain.support.AuditingEntityListener}
  *
  * @author Steven Zgaljic
  */
@@ -68,7 +68,7 @@ public class AclSecuredEntityListener {
         AclSecuredHandler object = handler.getObject();
         if(object != null){
             try {
-                object.saveAcl(target);
+                object.createAcl(target);
             } catch (Exception e) {
                 throw new AclRuntimeException(e.getMessage(), e);
             }
@@ -82,7 +82,7 @@ public class AclSecuredEntityListener {
         AclSecuredHandler object = handler.getObject();
         if(object != null){
             try {
-                object.saveAcl(target);
+                object.updateAcl(target);
             } catch (Exception e) {
                 throw new AclRuntimeException(e.getMessage(), e);
             }

@@ -9,6 +9,11 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Default implementation of {@link AclSidLookupStrategy}.
+ *
+ * @author Steven Zgaljic
+ */
 public class DefaultAclSidLookupStrategy implements AclSidLookupStrategy {
 
     protected Map<Class, Tuple<Field, AclSid>> cache = new HashMap<>();

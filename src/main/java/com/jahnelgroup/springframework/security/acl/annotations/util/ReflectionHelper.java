@@ -11,6 +11,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+/**
+ * Useful functions to help with reflection.
+ *
+ * @author Steven Zgaljic
+ */
 public class ReflectionHelper {
 
     public static List<Field> getAllFields(List<Field> fields, Class<?> type) {

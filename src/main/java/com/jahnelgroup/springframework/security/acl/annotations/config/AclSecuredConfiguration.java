@@ -23,40 +23,4 @@ public interface AclSecuredConfiguration {
      */
     String getAclServiceRef();
 
-//    private AclSidLookupStrategy sidProvider;
-//    private PermissionFactory permissionFactory;
-//
-//    private List<Class<? extends DefaultAclSecuredHandler>> aspects = new ArrayList<>();
-//
-//    public AclSecuredConfiguration enableCrudRepositories(){
-//        aspects.add(CrudRepositoryAclSecuredAspect.class);
-//        return this;
-//    }
-//
-//    public AclSidLookupStrategy getSidProvider() {
-//        return sidProvider;
-//    }
-//
-//    public AclSecuredConfiguration setSidProvider(AclSidLookupStrategy sidProvider) {
-//        this.sidProvider = sidProvider;
-//        return this;
-//    }
-//
-//    public PermissionFactory getPermissionFactory() {
-//        return permissionFactory;
-//    }
-//
-//    public AclSecuredConfiguration setPermissionFactory(PermissionFactory permissionFactory) {
-//        this.permissionFactory = permissionFactory;
-//        return this;
-//    }
-//
-//    public List<Class<? extends DefaultAclSecuredHandler>> getAspects() {
-//        return aspects;
-//    }
-//
-//    public AclSecuredConfiguration setAspects(List<Class<? extends DefaultAclSecuredHandler>> aspects) {
-//        this.aspects = aspects;
-//        return this;
-//    }
 }

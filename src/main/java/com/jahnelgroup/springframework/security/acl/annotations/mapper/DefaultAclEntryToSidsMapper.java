@@ -18,6 +18,11 @@ import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Default implementation of {@link AclEntryToSidsMapper}.
+ *
+ * @author Steven Zgaljic
+ */
 public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
 
     private AclSidLookupStrategy aclSidLookupStrategy;
