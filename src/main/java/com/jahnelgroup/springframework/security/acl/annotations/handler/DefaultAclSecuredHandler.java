@@ -1,11 +1,14 @@
 package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
-import com.jahnelgroup.springframework.security.acl.annotations.*;
-import com.jahnelgroup.springframework.security.acl.annotations.lookup.*;
-import com.jahnelgroup.springframework.security.acl.annotations.mapper.AclAceToSidMapper;
-import com.jahnelgroup.springframework.security.acl.annotations.mapper.DefaultAclAceToSidMapper;
-import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
-import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
+import java.io.Serializable;
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import javax.transaction.Transactional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -15,13 +18,12 @@ import org.springframework.security.acls.domain.PermissionFactory;
 import org.springframework.security.acls.model.*;
 import org.springframework.util.Assert;
 
-import javax.transaction.Transactional;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import com.jahnelgroup.springframework.security.acl.annotations.*;
+import com.jahnelgroup.springframework.security.acl.annotations.lookup.*;
+import com.jahnelgroup.springframework.security.acl.annotations.mapper.AclAceToSidMapper;
+import com.jahnelgroup.springframework.security.acl.annotations.mapper.DefaultAclAceToSidMapper;
+import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
+import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 
 /**
  * Default ACL secured handler to create, update and delete ACLs.
@@ -251,9 +253,8 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      *
      * @param acl
      * @param object
-     * @throws IllegalAccessException
      */
-    private void insertAclEntries(MutableAcl acl, Object object) throws IllegalAccessException {
+    private void insertAclEntries(MutableAcl acl, Object object) {
         Map<Integer, Map<Integer, Boolean>> entries = new HashMap<>();
         for(Tuple<Field, AclAce> ace : getAces(object)){
             for(Sid sid : getSids(ace, object)){
@@ -358,4 +359,3 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     }
 
 }
-
