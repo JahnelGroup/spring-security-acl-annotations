@@ -1,6 +1,7 @@
 package com.jahnelgroup.springframework.security.acl.annotations.mapper;
 
 import com.jahnelgroup.springframework.security.acl.annotations.AclAce;
+import com.jahnelgroup.springframework.security.acl.annotations.AclSecured;
 import com.jahnelgroup.springframework.security.acl.annotations.AclSid;
 import org.springframework.security.acls.model.Sid;
 
@@ -12,7 +13,7 @@ import java.util.List;
  *
  * @author Steven Zgaljic
  */
-public interface AclEntryToSidsMapper {
+public interface AclAceToSidMapper {
 
     /**
      * This method is intended to be called after finding a field annotated with {@link AclAce}. It will
@@ -36,9 +37,9 @@ public interface AclEntryToSidsMapper {
      *
      * @param object
      * @param field
-     * @param aclEntry
+     * @param aclAce
      * @return
      */
-    List<Sid> mapFieldToSids(Object object, Field field, AclAce aclEntry);
+    List<Sid> mapFieldToSids(Object object, Field field, AclAce aclAce);
 
 }

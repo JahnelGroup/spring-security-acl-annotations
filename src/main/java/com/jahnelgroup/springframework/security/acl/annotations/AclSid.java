@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD})
 public @interface AclSid {
     @AliasFor("principal")
-    boolean value() default true;
+    boolean  value() default true;
 
     @AliasFor("value")
     boolean principal() default true;

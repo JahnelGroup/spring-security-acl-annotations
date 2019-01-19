@@ -2,8 +2,8 @@ package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
 import com.jahnelgroup.springframework.security.acl.annotations.*;
 import com.jahnelgroup.springframework.security.acl.annotations.lookup.*;
-import com.jahnelgroup.springframework.security.acl.annotations.mapper.AclEntryToSidsMapper;
-import com.jahnelgroup.springframework.security.acl.annotations.mapper.DefaultAclEntryToSidsMapper;
+import com.jahnelgroup.springframework.security.acl.annotations.mapper.AclAceToSidMapper;
+import com.jahnelgroup.springframework.security.acl.annotations.mapper.DefaultAclAceToSidMapper;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 import org.slf4j.Logger;
@@ -39,7 +39,7 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     private AclObjectIdLookupStrategy aclObjectIdLookupStrategy = new DefaultAclObjectIdLookupStrategy();
     private AclParentLookupStrategy aclParentLookupStrategy = new DefaultAclParentLookupStrategy(aclObjectIdLookupStrategy);
     private AclSidLookupStrategy aclSidLookupStrategy = new DefaultAclSidLookupStrategy();
-    private AclEntryToSidsMapper aclEntryToSidsMapper = new DefaultAclEntryToSidsMapper(aclSidLookupStrategy);
+    private AclAceToSidMapper aclAceToSidMapper = new DefaultAclAceToSidMapper(aclSidLookupStrategy);
     private AclPermissionLookStrategy aclPermissionLookStrategy = new DefaultAclPermissionStrategy(permissionFactory);
 
     public DefaultAclSecuredHandler(){
@@ -108,13 +108,13 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
     }
 
     /**
-     * Sets the {@link AclEntryToSidsMapper} to use during ACL evaluation.
+     * Sets the {@link AclAceToSidMapper} to use during ACL evaluation.
      *
-     * @param aclEntryToSidsMapper
+     * @param aclAceToSidMapper
      */
-    public void setAclEntryToSidsMapper(AclEntryToSidsMapper aclEntryToSidsMapper) {
-        Assert.notNull(aclEntryToSidsMapper, "AclEntryToSidsMapper must not be null!");
-        this.aclEntryToSidsMapper = aclEntryToSidsMapper;
+    public void setAclAceToSidMapper(AclAceToSidMapper aclAceToSidMapper) {
+        Assert.notNull(aclAceToSidMapper, "AclAceToSidMapper must not be null!");
+        this.aclAceToSidMapper = aclAceToSidMapper;
     }
 
     /**
@@ -143,8 +143,8 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
             throw new AclRuntimeException("No AclParentLookupStrategy set! Please review your configuration.");
         if (aclSidLookupStrategy == null )
             throw new AclRuntimeException("No AclSidLookupStrategy set! Please review your configuration.");
-        if (aclEntryToSidsMapper == null )
-            throw new AclRuntimeException("No AclEntryToSidsMapper set! Please review your configuration.");
+        if (aclAceToSidMapper == null )
+            throw new AclRuntimeException("No AclAceToSidMapper set! Please review your configuration.");
         if (aclPermissionLookStrategy == null )
             throw new AclRuntimeException("No AclPermissionLookStrategy set! Please review your configuration.");
     }
@@ -321,15 +321,14 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      *
      * @param saved
      * @return
-     * @throws IllegalAccessException
      */
-    protected List<Tuple<Field, AclAce>> getAces(Object saved) throws IllegalAccessException {
-        List<Tuple<Field, AclAce>> result = aclAceLookupStrategy.lookup(saved);
+    protected List<Tuple<Field, AclAce>> getAces(Object saved) {
+        List<Tuple<Field, AclAce>> aces = aclAceLookupStrategy.lookup(saved);
 
-        if( result == null || result.isEmpty() )
+        if( aces == null || aces.isEmpty() )
             return new LinkedList<>();
 
-        return result;
+        return aces;
     }
 
     /**
@@ -338,10 +337,14 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      * @param ace
      * @param saved
      * @return
-     * @throws IllegalAccessException
      */
-    protected List<Sid> getSids(Tuple<Field, AclAce> ace, Object saved) throws IllegalAccessException {
-        return aclEntryToSidsMapper.mapFieldToSids(saved, ace.first, ace.second);
+    protected List<Sid> getSids(Tuple<Field, AclAce> ace, Object saved) {
+        List<Sid> sids = aclAceToSidMapper.mapFieldToSids(saved, ace.first, ace.second);
+
+        if( sids == null || sids.isEmpty() )
+            return new LinkedList<>();
+
+        return sids;
     }
 
     /**

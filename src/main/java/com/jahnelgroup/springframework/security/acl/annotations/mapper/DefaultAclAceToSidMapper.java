@@ -19,15 +19,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Default implementation of {@link AclEntryToSidsMapper}.
+ * Default implementation of {@link AclAceToSidMapper}.
  *
  * @author Steven Zgaljic
  */
-public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
+public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
 
     private AclSidLookupStrategy aclSidLookupStrategy;
 
-    public DefaultAclEntryToSidsMapper(AclSidLookupStrategy aclSidLookupStrategy){
+    public DefaultAclAceToSidMapper(AclSidLookupStrategy aclSidLookupStrategy){
         this.aclSidLookupStrategy = aclSidLookupStrategy;
     }
 
@@ -45,11 +45,10 @@ public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
      * @return
      */
     @Override
-    public List<Sid> mapFieldToSids(Object object, Field field, AclAce aclEntry) {
+    public List<Sid> mapFieldToSids(Object object, Field field, AclAce aclAce) {
         try{
-            Tuple<AclSid, List<Serializable>> aclSidListTuple = mapToSerializable(object, field);
-
-            return mapToSids(isPrincipal(object, field, aclEntry, aclSidListTuple),
+            Tuple<AclSid, List<Serializable>> aclSidListTuple = mapToSerializable(object, field, aclAce);
+            return mapToSids(isPrincipal(object, field, aclAce, aclSidListTuple),
                     aclSidListTuple.second);
 
         }catch(Exception e){
@@ -57,25 +56,31 @@ public class DefaultAclEntryToSidsMapper implements AclEntryToSidsMapper {
         }
     }
 
-    private boolean isPrincipal(Object object, Field field, AclAce aclEntry, Tuple<AclSid, List<Serializable>> aclSidListTuple) throws Exception {
+    private boolean isPrincipal(Object object, Field field, AclAce aclAce, Tuple<AclSid, List<Serializable>> aclSidListTuple) throws Exception {
         if( aclSidListTuple.first == null ){
-            if (aclEntry.sid() == null){
+            if (aclAce.sid() == null){
                 throw new Exception(String.format("Unable to determine if sids are principal or granted authority " +
-                        "for field %s for class %s", field.getName(), object.getClass().getCanonicalName()));
+                        "for field %s for class %s.", field.getName(), object.getClass().getCanonicalName()));
             }else{
-                return aclEntry.sid().principal();
+                return aclAce.sid().principal();
             }
         }else{
             return aclSidListTuple.first.principal();
         }
     }
 
-    public Tuple<AclSid, List<Serializable>> mapToSerializable(Object object, Field field) throws IllegalAccessException {
+    public Tuple<AclSid, List<Serializable>> mapToSerializable(Object object, Field field, AclAce aclAce) throws IllegalAccessException {
         Object value = field.get(object);
 
         // String, Character or Number are a possible sid values
         if( value instanceof String || value instanceof Character || value instanceof Number ){
-            return new Tuple<>(null, Arrays.asList((Serializable) value));
+
+            if( aclAce.sid() == null )
+                throw new AclRuntimeException(String.format("Unable to determine if sids are principal or granted authority " +
+                        "for field %s for class %s. AclAce fields on String, Character or Number must supply the sid " +
+                        "attribute.", field.getName(), object.getClass().getCanonicalName()));
+
+            return new Tuple<>(aclAce.sid(), Arrays.asList((Serializable) value));
         }
 
         // Collection
