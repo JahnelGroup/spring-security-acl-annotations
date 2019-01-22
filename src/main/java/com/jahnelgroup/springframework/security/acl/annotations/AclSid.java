@@ -15,4 +15,6 @@ public @interface AclSid {
 
     @AliasFor("value")
     boolean principal() default true;
+
+    String expression() default "";
 }

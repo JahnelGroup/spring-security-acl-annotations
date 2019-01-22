@@ -4,11 +4,13 @@ import com.jahnelgroup.springframework.security.acl.annotations.AclAce;
 import com.jahnelgroup.springframework.security.acl.annotations.AclSecured;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.util.List;
 
 /**
- * Looks up fields annotated with {@link AclAce}.
+ * Looks up elements annotated with {@link AclAce}.
  *
  * @author Steven Zgaljic
  */
@@ -24,6 +26,6 @@ public interface AclAceLookupStrategy {
      * @param object
      * @return empty {@link List} if no fields are found
      */
-    List<Tuple<Field, AclAce>> lookup(Object object);
+    List<Tuple<AnnotatedElement, AclAce>> lookup(Object object);
 
 }

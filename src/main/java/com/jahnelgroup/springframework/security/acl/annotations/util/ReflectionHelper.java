@@ -28,6 +28,16 @@ public class ReflectionHelper {
         return fields;
     }
 
+    public static List<Class> getClassHierarchy(List<Class> hierarchy, Class<?> type) {
+        hierarchy.add(type);
+
+        if (type.getSuperclass() != null) {
+            getClassHierarchy(hierarchy, type.getSuperclass());
+        }
+
+        return hierarchy;
+    }
+
     public static BiConsumer<Object, Field> IsSerializableConsumer(){
         return (object, field) -> {
             try{
@@ -77,6 +87,21 @@ public class ReflectionHelper {
                         check.accept(object, field);
                     results.add(new Triple<>(object, field, annotation));
                 }
+            }
+        }
+        return results;
+    }
+
+    public static <T extends Annotation> List<Tuple<Class, T>> findAnnotatedClasses(Object object, Class<T> annotationClass) {
+        List<Tuple<Class, T>> results = new LinkedList<>();
+        List<Class> classes = ReflectionHelper.getClassHierarchy(new LinkedList<>(), object.getClass());
+        if (!classes.isEmpty()) {
+            for (Class clazz : classes) {
+                Annotation annotation = clazz.getAnnotation(annotationClass);
+                if( annotation != null ){
+                    results.add(new Tuple<>(clazz, (T)annotation));
+                }
+
             }
         }
         return results;

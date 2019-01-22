@@ -8,5 +8,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface AclSecured {
-    //AclAce[] aces();
+    AclAce[] aces() default {};
 }

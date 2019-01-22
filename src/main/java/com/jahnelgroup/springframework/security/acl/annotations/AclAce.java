@@ -47,6 +47,6 @@ public @interface AclAce {
      * you indicate if the values are principal or granted authority.
      * @return
      */
-    AclSid sid() default @AclSid();
+    AclSid[] sid() default {};
 }
 

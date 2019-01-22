@@ -5,6 +5,7 @@ import com.jahnelgroup.springframework.security.acl.annotations.AclSecured;
 import com.jahnelgroup.springframework.security.acl.annotations.AclSid;
 import org.springframework.security.acls.model.Sid;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.util.List;
 
@@ -36,10 +37,10 @@ public interface AclAceToSidMapper {
      *      Same as Case 3 but for Array's.
      *
      * @param object
-     * @param field
+     * @param element
      * @param aclAce
      * @return
      */
-    List<Sid> mapFieldToSids(Object object, Field field, AclAce aclAce);
+    List<Sid> mapToSids(Object object, AnnotatedElement element, AclAce aclAce);
 
 }

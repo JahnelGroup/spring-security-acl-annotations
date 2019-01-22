@@ -1,6 +1,7 @@
 package com.jahnelgroup.springframework.security.acl.annotations.handler;
 
 import java.io.Serializable;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -256,7 +257,7 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      */
     private void insertAclEntries(MutableAcl acl, Object object) {
         Map<Integer, Map<Integer, Boolean>> entries = new HashMap<>();
-        for(Tuple<Field, AclAce> ace : getAces(object)){
+        for(Tuple<AnnotatedElement, AclAce> ace : getAces(object)){
             for(Sid sid : getSids(ace, object)){
                 for (String p : ace.second.permissions()) {
                     Permission permission = getPermission(p);
@@ -323,8 +324,8 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      * @param saved
      * @return
      */
-    protected List<Tuple<Field, AclAce>> getAces(Object saved) {
-        List<Tuple<Field, AclAce>> aces = aclAceLookupStrategy.lookup(saved);
+    protected List<Tuple<AnnotatedElement, AclAce>> getAces(Object saved) {
+        List<Tuple<AnnotatedElement, AclAce>> aces = aclAceLookupStrategy.lookup(saved);
 
         if( aces == null || aces.isEmpty() )
             return new LinkedList<>();
@@ -339,7 +340,7 @@ public class DefaultAclSecuredHandler implements AclSecuredHandler, Initializing
      * @param saved
      * @return
      */
-    protected List<Sid> getSids(Tuple<Field, AclAce> ace, Object saved) {
+    protected List<Sid> getSids(Tuple<AnnotatedElement, AclAce> ace, Object saved) {
         List<Sid> sids = aclAceToSidMapper.mapFieldToSids(saved, ace.first, ace.second);
 
         if( sids == null || sids.isEmpty() )

@@ -7,6 +7,10 @@ import com.jahnelgroup.springframework.security.acl.annotations.lookup.AclSidLoo
 import com.jahnelgroup.springframework.security.acl.annotations.util.Triple;
 import com.jahnelgroup.springframework.security.acl.annotations.util.Tuple;
 import org.springframework.core.ResolvableType;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.security.acls.domain.GrantedAuthoritySid;
 import org.springframework.security.acls.domain.PrincipalSid;
 import org.springframework.security.acls.model.Sid;
@@ -14,6 +18,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.util.ReflectionUtils;
 
 import java.io.Serializable;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,8 +28,11 @@ import java.util.stream.Collectors;
  *
  * @author Steven Zgaljic
  */
+@SuppressWarnings("Duplicates")
 public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
 
+    private ClassAclAceToSidMapper classAclAceToSidMapper = new ClassAclAceToSidMapper();
+    private SpelExpressionParser expressionParser = new SpelExpressionParser();
     private AclSidLookupStrategy aclSidLookupStrategy;
 
     public DefaultAclAceToSidMapper(AclSidLookupStrategy aclSidLookupStrategy){
@@ -45,31 +53,30 @@ public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
      * @return
      */
     @Override
-    public List<Sid> mapFieldToSids(Object object, Field field, AclAce aclAce) {
+    public List<Sid> mapToSids(Object object, AnnotatedElement element, AclAce aclAce) {
         try{
-            Tuple<AclSid, List<Serializable>> aclSidListTuple = mapToSerializable(object, field, aclAce);
-            return mapToSids(isPrincipal(object, field, aclAce, aclSidListTuple),
-                    aclSidListTuple.second);
+            if( element instanceof Class ){
+                return classAclAceToSidMapper.mapToSids(object, element, aclAce);
+            }
 
+            else if(element instanceof Field ){
+                return mapField(object, (Field)element, aclAce);
+            }
+
+            else{
+                throw new AclRuntimeException(String.format("Unable to derive sids from AnnotatedElement %s for " +
+                        "Class %s", element, object.getClass().getCanonicalName()));
+            }
         }catch(Exception e){
             throw new AclRuntimeException(e);
         }
     }
 
-    private boolean isPrincipal(Object object, Field field, AclAce aclAce, Tuple<AclSid, List<Serializable>> aclSidListTuple) throws Exception {
-        if( aclSidListTuple.first == null ){
-            if (aclAce.sid() == null){
-                throw new Exception(String.format("Unable to determine if sids are principal or granted authority " +
-                        "for field %s for class %s.", field.getName(), object.getClass().getCanonicalName()));
-            }else{
-                return aclAce.sid().principal();
-            }
-        }else{
-            return aclSidListTuple.first.principal();
-        }
+    private boolean hasSid(AclAce aclAce){
+        return aclAce.sid() != null && aclAce.sid().length > 0;
     }
 
-    public Tuple<AclSid, List<Serializable>> mapToSerializable(Object object, Field field, AclAce aclAce) throws IllegalAccessException {
+    public List<Sid> mapField(Object object, Field field, AclAce aclAce) throws IllegalAccessException {
         Object value = field.get(object);
 
         // String, Character or Number are a possible sid values
@@ -80,7 +87,7 @@ public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
                         "for field %s for class %s. AclAce fields on String, Character or Number must supply the sid " +
                         "attribute.", field.getName(), object.getClass().getCanonicalName()));
 
-            return new Tuple<>(aclAce.sid(), Arrays.asList((Serializable) value));
+            return mapToSids(aclAce.sid()[0].principal(), Arrays.asList((Serializable) value));
         }
 
         // Collection
@@ -89,13 +96,25 @@ public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
 
             // nothing to map
             if( collection.isEmpty() )
-                return new Tuple<>(null, new LinkedList<>());
+                return new LinkedList<>();
 
-            Object o = collection.iterator().next();
-            Triple<Object, Field, AclSid> result = aclSidLookupStrategy.lookup(o);
+            List<Object> elementList = new ArrayList<>();
+            Iterator it = collection.iterator();
+            Object first = it.next();
+            if( first instanceof String || first instanceof Character || first instanceof Number ){
+                elementList.add(first);
+                it.forEachRemaining(elementList::add);
+            }else{
+                Triple<Object, Field, AclSid> result = aclSidLookupStrategy.lookup(it);
+                elementList.add(result.second.get(result.first));
+                while(it.hasNext()){
+                    result = aclSidLookupStrategy.lookup(it);
+                    elementList.add(result.second.get(result.first));
+                    aclSid = result.third;
+                }
+            }
 
-            if( result != null )
-                return new Tuple<>(result.third, mapToValues(result.second, collection.iterator()));
+            return mapToSids(aclSid.principal(), elementList);
         }
 
         // Array
@@ -121,7 +140,7 @@ public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
         }
 
         throw new AclRuntimeException(String.format("Unable to find @AclSid for field %s on class %s",
-            field.getName(), object.getClass().getCanonicalName()));
+                field.getName(), object.getClass().getCanonicalName()));
     }
 
     private List<Serializable> mapToValues(Field field, Object[] objects) {
@@ -152,5 +171,18 @@ public class DefaultAclAceToSidMapper implements AclAceToSidMapper {
         return values.stream().map(v -> principal ? new PrincipalSid(v.toString()) :
                 new GrantedAuthoritySid(new SimpleGrantedAuthority((v.toString()))))
                 .collect(Collectors.toList());
+    }
+
+    private Object evaluate(String expression, Object object) {
+        Expression exp = expressionParser.parseExpression(expression);
+        EvaluationContext context = new StandardEvaluationContext(object);
+
+        Object value = exp.getValue(context);
+        if( value == null ){
+            throw new RuntimeException(String.format("Unable to find AclSid for class %s with expression %s",
+                    object.getClass().getCanonicalName(), expression));
+        }
+
+        return value;
     }
 }
